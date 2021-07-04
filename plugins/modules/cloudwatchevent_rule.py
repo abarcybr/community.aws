@@ -25,8 +25,8 @@ notes:
   - A rule must contain at least an I(event_pattern) or I(schedule_expression). A
     rule can have both an I(event_pattern) and a I(schedule_expression), in which
     case the rule will trigger on matching events as well as on a schedule.
-  - When specifying targets, I(input), I(input_path) and I(input_transformer) are mutually-exclusive
-    and optional parameters.
+  - When specifying targets, I(input), I(input_path), I(input_paths_map) and I(input_template)
+    are mutually-exclusive and optional parameters.
 options:
   name:
     description:
@@ -84,21 +84,28 @@ options:
         type: str
         description:
           - A JSON object that will override the event data when passed to the target.
-          - If neither I(input) nor I(input_path) nor I(input_transformer)
+          - If neither I(input) nor I(input_path) nor I(input_paths_map) nor I(input_template)
             is specified, then the entire event is passed to the target in JSON form.
       input_path:
         type: str
         description:
           - A JSONPath string (e.g. C($.detail)) that specifies the part of the event data to be
             passed to the target.
-          - If neither I(input) nor I(input_path) nor I(input_transformer)
+          - If neither I(input) nor I(input_path) nor I(input_paths_map) nor I(input_template)
             is specified, then the entire event is passed to the target in JSON form.
-      input_transformer:
+      input_paths_map:
         type: dict
         description:
           - A dict that specifies the transformation of the event data to
             custom input parameters.
-          - If neither I(input) nor I(input_path) nor I(input_transformer)
+          - If neither I(input) nor I(input_path) nor I(input_paths_map) nor I(input_template)
+            is specified, then the entire event is passed to the target in JSON form.
+      input_template:
+        type: str
+        description:
+          - A string that templates the values input_paths_map extracted from the event data.
+            It is used to produce the output you want to be sent to the target.
+          - If neither I(input) nor I(input_path) nor I(input_paths_map) nor I(input_template)
             is specified, then the entire event is passed to the target in JSON form.
       ecs_parameters:
         type: dict
@@ -140,7 +147,10 @@ EXAMPLES = r'''
     targets:
       - id: MyTargetSnsTopic
         arn: arn:aws:sns:us-east-1:123456789012:MySNSTopic
-        input_transformer: {"InputPathsMap": {"instance": "$.detail.instance-id","state": "$.detail.state"}, "InputTemplate": "\"<instance> is in state <state>\""}
+        input_paths_map:
+          instance: "$.detail.instance-id"
+          state: "$.detail.state"
+        input_template: "<instance> is in state <state>"
 
 - community.aws.cloudwatchevent_rule:
     name: MyCronTask
@@ -305,8 +315,10 @@ class CloudWatchEventRule(object):
                 target_request['Input'] = target['input']
             if 'input_path' in target:
                 target_request['InputPath'] = target['input_path']
-            if 'input_transformer' in target:
-                target_request['InputTransformer'] = target['input_transformer']
+            if 'input_paths_map' in target or 'input_template' in target:
+                target_request['InputTransformer'] = {}
+                target_request['InputTransformer']['InputPathsMap'] = target['input_paths_map']
+                target_request['InputTransformer']['InputTemplate'] = '"{}"'.format(target['input_template'])
             if 'role_arn' in target:
                 target_request['RoleArn'] = target['role_arn']
             if 'ecs_parameters' in target:
