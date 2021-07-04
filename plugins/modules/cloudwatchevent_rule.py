@@ -318,7 +318,9 @@ class CloudWatchEventRule(object):
             if 'input_paths_map' in target or 'input_template' in target:
                 target_request['InputTransformer'] = {}
                 target_request['InputTransformer']['InputPathsMap'] = target['input_paths_map']
-                target_request['InputTransformer']['InputTemplate'] = '"{}"'.format(target['input_template'])
+                target_request['InputTransformer']['InputTemplate'] = '"{unescaped_input_template}"'.format(
+                  unescaped_input_template = target['input_template']
+                )
             if 'role_arn' in target:
                 target_request['RoleArn'] = target['role_arn']
             if 'ecs_parameters' in target:
